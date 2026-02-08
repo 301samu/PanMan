@@ -17,10 +17,31 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('is_authenticated') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const location = useLocation();
+
+  // Handle Supabase Auth Session
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      setAuthChecking(false);
+      if (session) fetchData();
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      if (session) fetchData();
+      else {
+        setAirmen([]);
+        setPendingAirmen([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,18 +66,14 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleLogin = () => {
+  const handleLoginSuccess = () => {
     setIsAuthenticated(true);
-    localStorage.setItem('is_authenticated', 'true');
+    fetchData();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
-    localStorage.removeItem('is_authenticated');
   };
 
   const addAirman = async (data: Airman) => {
@@ -124,6 +141,15 @@ const App: React.FC = () => {
 
   const isPublicRoute = location.pathname === '/submit';
 
+  // While checking auth, show a small loader to prevent flickering
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <RefreshCw className="animate-spin text-blue-500" size={40} />
+      </div>
+    );
+  }
+
   if (isPublicRoute) {
     return (
       <Routes>
@@ -135,7 +161,7 @@ const App: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );

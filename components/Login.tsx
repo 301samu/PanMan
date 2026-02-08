@@ -1,29 +1,51 @@
 
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, Eye, EyeOff, AlertCircle, UserPlus, LogIn } from 'lucide-react';
+import { supabase } from '../supabase';
 
 interface Props {
-  onLogin: (password: string) => void;
+  onLoginSuccess: () => void;
 }
 
-const Login: React.FC<Props> = ({ onLogin }) => {
+const Login: React.FC<Props> = ({ onLoginSuccess }) => {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123') { // Demo password
-      onLogin(password);
-    } else {
-      setError('Invalid authorization credentials. Access denied.');
-      setTimeout(() => setError(''), 3000);
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (signUpError) throw signUpError;
+        alert('Account created! You can now log in. (Check email for confirmation if enabled)');
+        setIsSignUp(false);
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        onLoginSuccess();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Decorative background elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px]"></div>
       
@@ -34,19 +56,23 @@ const Login: React.FC<Props> = ({ onLogin }) => {
               <ShieldCheck size={48} className="text-white" />
             </div>
             <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">BAF PMS</h1>
-            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Secure Personnel Gateway</p>
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">
+              {isSignUp ? 'Registration Gateway' : 'Secure Personnel Gateway'}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleAuth} className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">System Identifier</label>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Personnel Email</label>
               <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
                 <input 
-                  type="text" 
-                  disabled
-                  value="ADMIN_RESTRICTED"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-slate-700 rounded-2xl text-slate-400 font-bold outline-none cursor-not-allowed"
+                  required
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@baf.mil.bd"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-slate-700 rounded-2xl text-white font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                 />
               </div>
             </div>
@@ -82,13 +108,24 @@ const Login: React.FC<Props> = ({ onLogin }) => {
 
             <button 
               type="submit" 
-              className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-xl shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest"
+              disabled={loading}
+              className="w-full py-5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-black rounded-2xl shadow-xl shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest flex items-center justify-center gap-3"
             >
-              Authorize Entry
+              {loading ? 'Processing...' : isSignUp ? (
+                <><UserPlus size={20} /> Create New ID</>
+              ) : (
+                <><LogIn size={20} /> Authorize Entry</>
+              )}
             </button>
           </form>
 
-          <div className="mt-10 text-center">
+          <div className="mt-8 text-center space-y-4">
+            <button 
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-blue-400 hover:text-blue-300 text-sm font-bold transition-colors underline decoration-blue-400/30 underline-offset-4"
+            >
+              {isSignUp ? 'Already have an ID? Login' : 'Request New Access ID'}
+            </button>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
               Authorized Personnel Only. Unauthorized access attempts are monitored and recorded.
             </p>
