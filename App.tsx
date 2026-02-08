@@ -21,7 +21,19 @@ const App: React.FC = () => {
   const [authChecking, setAuthChecking] = useState(true);
   const location = useLocation();
 
-  // Handle Supabase Auth Session
+  // Utility to clean data for Supabase
+  const cleanForSupabase = (data: any) => {
+    const cleaned = { ...data };
+    // Postgres DATE and INTEGER types do not accept empty strings.
+    // We convert all empty strings to null or delete them.
+    Object.keys(cleaned).forEach(key => {
+      if (cleaned[key] === '') {
+        cleaned[key] = null; 
+      }
+    });
+    return cleaned;
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
@@ -75,11 +87,12 @@ const App: React.FC = () => {
   };
 
   const addAirman = async (data: Airman) => {
-    // Remove the frontend ID to let Supabase generate a valid UUID
     const { id, ...insertData } = data;
+    const cleaned = cleanForSupabase({ ...insertData, status: 'active' });
+    
     const { error } = await supabase
       .from('airmen')
-      .insert([{ ...insertData, status: 'active' }]);
+      .insert([cleaned]);
     
     if (!error) {
       fetchData();
@@ -90,9 +103,10 @@ const App: React.FC = () => {
   };
 
   const updateAirman = async (updatedAirman: Airman) => {
+    const cleaned = cleanForSupabase(updatedAirman);
     const { error } = await supabase
       .from('airmen')
-      .update(updatedAirman)
+      .update(cleaned)
       .eq('id', updatedAirman.id);
 
     if (!error) fetchData();
@@ -104,9 +118,11 @@ const App: React.FC = () => {
 
   const submitToPending = async (data: Airman) => {
     const { id, ...insertData } = data;
+    const cleaned = cleanForSupabase({ ...insertData, status: 'pending' });
+    
     const { error } = await supabase
       .from('airmen')
-      .insert([{ ...insertData, status: 'pending' }]);
+      .insert([cleaned]);
     
     if (!error) fetchData();
     else {

@@ -57,15 +57,33 @@ const AirmanForm: React.FC<Props> = ({ onSubmit, initialData }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Cleanup data: Convert empty strings to undefined so Supabase handles them as NULL
+    const cleanedData = { ...formData };
+    
+    const optionalFields: (keyof Airman)[] = ['lOutDate', 'spouseName', 'nidNo', 'accomAddress'];
+    optionalFields.forEach(field => {
+      if (cleanedData[field] === '') {
+        delete cleanedData[field];
+      }
+    });
+
+    // If not married, remove spouse name regardless
+    if (!cleanedData.isMarried) {
+      delete cleanedData.spouseName;
+    }
+
     const newRecord: Airman = {
-      ...formData as Airman,
-      id: generateId(),
+      ...cleanedData as Airman,
+      id: generateId(), // This will be removed by App.tsx before insert to let Supabase gen UUID
       createdAt: Date.now(),
       status: 'active'
     };
+    
     onSubmit(newRecord);
-    setMessage('Record successfully added!');
+    setMessage('Record successfully submitted!');
     setTimeout(() => setMessage(''), 3000);
+    
     // Reset form if not edit mode
     if (!initialData) {
       setFormData({
