@@ -23,14 +23,12 @@ const App: React.FC = () => {
 
   // Handle Supabase Auth Session
   useEffect(() => {
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
       setAuthChecking(false);
       if (session) fetchData();
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
       if (session) fetchData();
@@ -77,12 +75,18 @@ const App: React.FC = () => {
   };
 
   const addAirman = async (data: Airman) => {
+    // Remove the frontend ID to let Supabase generate a valid UUID
+    const { id, ...insertData } = data;
     const { error } = await supabase
       .from('airmen')
-      .insert([{ ...data, status: 'active' }]);
+      .insert([{ ...insertData, status: 'active' }]);
     
-    if (!error) fetchData();
-    else alert('Failed to add airman to database');
+    if (!error) {
+      fetchData();
+    } else {
+      console.error('Insert error:', error);
+      alert(`Failed to add airman: ${error.message}`);
+    }
   };
 
   const updateAirman = async (updatedAirman: Airman) => {
@@ -92,15 +96,23 @@ const App: React.FC = () => {
       .eq('id', updatedAirman.id);
 
     if (!error) fetchData();
-    else alert('Failed to update record');
+    else {
+      console.error('Update error:', error);
+      alert(`Failed to update record: ${error.message}`);
+    }
   };
 
   const submitToPending = async (data: Airman) => {
+    const { id, ...insertData } = data;
     const { error } = await supabase
       .from('airmen')
-      .insert([{ ...data, status: 'pending' }]);
+      .insert([{ ...insertData, status: 'pending' }]);
     
     if (!error) fetchData();
+    else {
+      console.error('Pending submission error:', error);
+      alert(`Submission failed: ${error.message}`);
+    }
   };
 
   const approvePending = async (id: string) => {
@@ -141,7 +153,6 @@ const App: React.FC = () => {
 
   const isPublicRoute = location.pathname === '/submit';
 
-  // While checking auth, show a small loader to prevent flickering
   if (authChecking) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -169,7 +180,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-slate-50 overflow-hidden text-slate-900">
-      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -225,7 +235,6 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 no-print shadow-sm z-20">
           <div className="flex items-center gap-4">
