@@ -1,0 +1,7 @@
+{
+  "name": "Personnel Management System",
+  "description": "A comprehensive dashboard for managing Airmen records including automated age/service calculations, search/filtering, printing, Excel export, and an external review-based entry system.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
